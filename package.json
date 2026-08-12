@@ -1,0 +1,28 @@
+{
+  "name": "pigrun-fair",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "deploy": "wrangler pages deploy dist --project-name pigrun-fair",
+    "deploy:create": "wrangler pages project create pigrun-fair --production-branch=main",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx test/validate-levels.ts",
+    "test:play": "tsx test/simulate-play.ts",
+    "test:collision": "tsx test/collision.test.ts",
+    "test:gen": "tsx test/generator.test.ts",
+    "test:fill": "tsx test/fill.test.ts",
+    "gen": "tsx tools/gen-cli.ts",
+    "inspect": "tsx tools/inspect.ts"
+  },
+  "devDependencies": {
+    "edgeone": "^1.6.23",
+    "tsx": "^4.23.9",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.11",
+    "wrangler": "^4.121.0"
+  }
+}

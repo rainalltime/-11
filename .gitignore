@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+
+# logs
+*.log
+npm-debug.log*
+
+# env & secrets
+.env
+.env.*
+
+# EdgeOne CLI
+.edgeone/
+.tef_dist/
+
+# local server / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# deploy packages
+*.zip
+
+# dev reference art (not needed for build/runtime)
+reference_art/

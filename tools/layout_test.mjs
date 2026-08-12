@@ -1,0 +1,30 @@
+const PORT = 9352;
+import { spawn } from 'node:child_process';
+import { setTimeout as sleep } from 'node:timers/promises';
+const edgeExe = '/mnt/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
+const edge = spawn(edgeExe, ['--headless=new','--disable-gpu','--no-sandbox','--remote-debugging-port='+PORT,'--user-data-dir=/tmp/cdp-layout','about:blank'], { stdio: 'ignore' });
+await sleep(2500);
+let targets;
+for (let i=0;i<20;i++){ try{ const r=await fetch(`http://127.0.0.1:${PORT}/json`); targets=await r.json(); if(targets.length) break;}catch{} await sleep(300);}
+const page = targets?.find(t=>t.type==='page');
+const ws = new WebSocket(page.webSocketDebuggerUrl);
+let id=0; const pending=new Map();
+function send(m,p={}){ return new Promise((res,rej)=>{ const mid=++id; pending.set(mid,{res,rej}); ws.send(JSON.stringify({id:mid,method:m,params:p})); }); }
+ws.onmessage=(ev)=>{ const m=JSON.parse(ev.data); if(m.id&&pending.has(m.id)){ const {res,rej}=pending.get(m.id); pending.delete(m.id); m.error?rej(new Error(m.error.message)):res(m.result);} };
+await new Promise(r=>ws.onopen=r);
+await send('Runtime.enable'); await send('Page.enable'); await send('Page.navigate',{url:'http://127.0.0.1:5173/'});
+for(let i=0;i<80;i++){ const r=await send('Runtime.evaluate',{expression:"document.getElementById('status')?.textContent.includes('/1000')",returnByValue:true}); if(r.result.value)break; await sleep(300);}
+const evl = async (expr) => (await send('Runtime.evaluate',{expression:expr,returnByValue:true})).result.value;
+console.log('规则文字已删(hint不存在):', await evl(`!document.getElementById('hint')`));
+console.log('道具在地图内(toolbar-float存在):', await evl(`!!document.getElementById('toolbar-float')`));
+console.log('画布CSS尺寸:', await evl(`(()=>{const c=document.getElementById('game'); return c.width+'x'+c.height})()`));
+// 打开设置
+await evl(`document.getElementById('btn-settings').click()`);
+await sleep(300);
+console.log('设置弹窗打开:', await evl(`!document.getElementById('settings-modal').classList.contains('hidden')`));
+console.log('设置内含 重开/选关/静音/彩蛋/音量:', await evl(`(['btn-restart','btn-menu','btn-sound','btn-eggs','vol-sfx','vol-bgm']).every(id=>!!document.getElementById(id))`));
+// 从设置里点选关
+await evl(`document.getElementById('btn-menu').click()`);
+await sleep(400);
+console.log('点选关后: 设置关闭?', await evl(`document.getElementById('settings-modal').classList.contains('hidden')`), '| 选关菜单打开?', await evl(`!document.getElementById('menu-modal').classList.contains('hidden')`));
+ws.close(); edge.kill(); process.exit(0);

@@ -1,0 +1,5 @@
+name = "pigrun-fair"
+compatibility_date = "2026-08-12"
+
+[pages]
+build_output_dir = "dist"

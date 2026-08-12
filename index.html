@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>猪了个猪 · 无死局版</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        background: linear-gradient(180deg, #fef9ec 0%, #f4e9d0 60%, #e7d9b8 100%);
+        overflow: hidden;
+        touch-action: manipulation;
+      }
+      #game-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+        height: 100vh;
+        height: 100dvh;
+        padding: 8px;
+      }
+      .game-title {
+        margin: 2px 0 0;
+        font-size: 20px;
+        color: #9a5c3a;
+        letter-spacing: 2px;
+      }
+      .game-title small {
+        font-size: 12px;
+        color: #c08a5a;
+        letter-spacing: 0;
+      }
+      #topbar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        font-size: 15px;
+      }
+      #vol-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        font-size: 13px;
+        color: #8a7f63;
+        padding: 2px 0;
+      }
+      #vol-row label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      #vol-row input[type="range"] {
+        width: 96px;
+        height: 4px;
+        accent-color: #e0557f;
+        cursor: pointer;
+        -webkit-appearance: none;
+        appearance: none;
+        background: #e6dcc8;
+        border-radius: 4px;
+      }
+      #vol-row input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #e0557f;
+        border: 2px solid #fff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      }
+      #vol-row input[type="range"]::-moz-range-thumb {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #e0557f;
+        border: 2px solid #fff;
+      }
+      #timer {
+        font-weight: 700;
+        color: #d0554a;
+        font-size: 18px;
+        min-width: 64px;
+        text-align: center;
+      }
+      #time-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 200px;
+      }
+      #time-bar {
+        position: relative;
+        flex: 1;
+        height: 14px;
+        background: #eee3d0;
+        border: 1px solid #d4c9a8;
+        border-radius: 7px;
+        overflow: hidden;
+      }
+      #time-fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+        background: linear-gradient(90deg, #7cc06a, #d5c05a);
+        transition: width 0.4s linear;
+      }
+      #time-fill.low {
+        background: linear-gradient(90deg, #e0555a, #e0855a);
+      }
+      #time-bar .tick {
+        position: absolute;
+        top: -2px;
+        width: 2px;
+        height: 18px;
+        background: #d0554a;
+        transform: translateX(-50%);
+      }
+      #time-bar .tick::after {
+        content: '★';
+        position: absolute;
+        top: 18px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 9px;
+        color: #f5a623;
+      }
+      #timer.low {
+        color: #fff;
+        background: #d0554a;
+        border-radius: 6px;
+        padding: 2px 8px;
+      }
+      #toolbar {
+        display: flex;
+        gap: 10px;
+      }
+      #canvas-wrap {
+        flex: 1 1 auto;
+        width: 100%;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+      #toolbar-float {
+        position: absolute;
+        bottom: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 8px;
+        background: rgba(255, 255, 255, 0.85);
+        border-radius: 20px;
+        padding: 6px 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        z-index: 5;
+        pointer-events: auto;
+      }
+      #toolbar-float button {
+        padding: 8px 10px;
+        font-size: 16px;
+        border-radius: 50%;
+        min-width: 38px;
+      }
+      .vol-in-modal {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 14px;
+        font-size: 14px;
+        color: #8a7f63;
+        align-items: center;
+      }
+      .vol-in-modal input[type="range"] {
+        width: 160px;
+        accent-color: #e0557f;
+      }
+      canvas {
+        background: #fff;
+        border: 2px solid #d4c9a8;
+        border-radius: 8px;
+        touch-action: none;
+        cursor: pointer;
+        max-width: 100%;
+        max-height: 100%;
+      }
+      button {
+        font-size: 14px;
+        padding: 9px 14px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        cursor: pointer;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+      button:active {
+        transform: scale(0.96);
+      }
+      #status {
+        min-width: 220px;
+        text-align: center;
+        font-size: 13px;
+      }
+      #modal {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.35);
+        z-index: 10;
+      }
+      /* 通用隐藏:任何带 hidden 的元素都不显示(口令弹窗/弹层/错误提示都用它) */
+      .hidden {
+        display: none !important;
+      }
+      .overlay {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 20;
+      }
+      .modal-box {
+        background: #fff;
+        border-radius: 12px;
+        padding: 22px 26px;
+        width: 320px;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+      .modal-box .phrase {
+        font-size: 22px;
+        font-weight: 700;
+        color: #e0557f;
+        margin: 12px 0;
+      }
+      .modal-box input {
+        width: 100%;
+        padding: 9px 12px;
+        font-size: 16px;
+        border: 2px solid #eee;
+        border-radius: 8px;
+        text-align: center;
+        outline: none;
+      }
+      .modal-box input:focus {
+        border-color: #e0557f;
+      }
+      .modal-box.wide {
+        width: min(92vw, 640px);
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .stars {
+        font-size: 30px;
+        color: #f5a623;
+        letter-spacing: 4px;
+      }
+      .menu-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+        gap: 8px;
+        overflow-y: auto;
+        padding: 8px 0;
+      }
+      .menu-grid button {
+        padding: 8px 0;
+        font-size: 14px;
+        position: relative;
+      }
+      .menu-grid button .star {
+        position: absolute;
+        top: 2px;
+        right: 4px;
+        font-size: 10px;
+        color: #f5a623;
+      }
+      .egg-pop {
+        font-size: 18px;
+        color: #c26bd8;
+        margin: 4px 0;
+      }
+      .egg-text {
+        font-size: 24px;
+        font-weight: 700;
+        color: #e0557f;
+        margin: 12px 0;
+      }
+      .egg-list {
+        overflow-y: auto;
+        text-align: left;
+        padding: 6px 4px;
+        min-height: 120px;
+        max-height: 55vh;
+      }
+      .egg-list .egg-item {
+        padding: 6px 8px;
+        border-bottom: 1px dashed #eee;
+        color: #555;
+      }
+      .egg-list .egg-item.locked {
+        color: #ccc;
+      }
+      .modal-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+        justify-content: center;
+      }
+      .error {
+        color: #d33;
+        font-size: 13px;
+        margin-top: 8px;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-wrap">
+      <h1 class="game-title">🐷 猪了个猪 <small>· 无死局 · 给大宝的专属游戏</small></h1>
+      <div id="topbar">
+        <button id="btn-settings">☰</button>
+        <div id="time-wrap">
+          <div id="time-bar">
+            <div id="time-fill"></div>
+          </div>
+          <span id="timer">⏱ 5:00</span>
+        </div>
+        <span id="status">第 1 关</span>
+      </div>
+      <div id="canvas-wrap">
+        <canvas id="game"></canvas>
+        <div id="toolbar-float">
+          <button id="btn-tool-hint">💡</button>
+          <button id="btn-tool-rotate">🔃</button>
+          <button id="btn-tool-grab">🐷</button>
+          <button id="btn-tool-addtime">⏰</button>
+        </div>
+      </div>
+    </div>
+    <div id="settings-modal" class="overlay hidden">
+      <div class="modal-box">
+        <p style="text-align:center;font-weight:700;">☰ 设置</p>
+        <div class="modal-actions" style="flex-wrap:wrap;">
+          <button id="btn-restart">🔁 重开</button>
+          <button id="btn-menu">🗺 选关</button>
+          <button id="btn-sound">🔊 静音</button>
+          <button id="btn-eggs">🎁 彩蛋</button>
+        </div>
+        <div class="vol-in-modal">
+          <label>🔊 音效 <input id="vol-sfx" type="range" min="0" max="100" step="1" value="100" /></label>
+          <label>🎵 背景 <input id="vol-bgm" type="range" min="0" max="100" step="1" value="33" /></label>
+        </div>
+        <div class="modal-actions">
+          <button id="settings-close">关闭</button>
+        </div>
+      </div>
+    </div>
+    <div id="modal" class="hidden">
+      <div class="modal-box">
+        <p>想用道具?先把口令打对 👇</p>
+        <p id="modal-phrase" class="phrase">???</p>
+        <input id="modal-input" autocomplete="off" placeholder="输入上面的口令" />
+        <div class="modal-actions">
+          <button id="modal-cancel">取消</button>
+          <button id="modal-ok">确认</button>
+        </div>
+        <p id="modal-error" class="error hidden">不对哦,再试试～</p>
+      </div>
+    </div>
+    <div id="done-modal" class="overlay hidden">
+      <div class="modal-box">
+        <p id="done-title">🎉 过关!</p>
+        <p id="done-stars" class="stars">★★★</p>
+        <div class="modal-actions">
+          <button id="done-next">下一关</button>
+          <button id="done-retry">重试</button>
+          <button id="done-menu">选关</button>
+        </div>
+      </div>
+    </div>
+    <div id="menu-modal" class="overlay hidden">
+      <div class="modal-box wide">
+        <p style="text-align:center;font-weight:700;">选择关卡</p>
+        <div id="menu-grid" class="menu-grid"></div>
+        <div class="modal-actions">
+          <button id="menu-close">关闭</button>
+        </div>
+      </div>
+    </div>
+    <div id="egg-modal" class="overlay hidden">
+      <div class="modal-box">
+        <p class="egg-pop">🥚 彩蛋!</p>
+        <p id="egg-text" class="egg-text">爱你哟</p>
+        <div class="modal-actions">
+          <button id="egg-ok">收下 💕</button>
+        </div>
+      </div>
+    </div>
+    <div id="egg-list-modal" class="overlay hidden">
+      <div class="modal-box wide">
+        <p style="text-align:center;font-weight:700;">🥚 彩蛋收集</p>
+        <div id="egg-list" class="egg-list"></div>
+        <div class="modal-actions">
+          <button id="egg-list-close">关闭</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
