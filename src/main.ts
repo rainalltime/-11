@@ -57,6 +57,8 @@ let progress = loadProgress();
 let eggs: string[] = [];
 let state: GameState;
 let renderer: Renderer;
+/** 当前关卡可解性缓存(滑动感知,切关时算一次)。 */
+let currentSolvable = true;
 /** 动物模板:用 dirtypig 一张图,按不同颜色上色(原版做法) */
 let baseSprite: HTMLImageElement | undefined;
 
@@ -177,8 +179,8 @@ function loadLevel(index: number): void {
   initialTimeMs = timeMs;
   setupTimeBar();
   closeVerify();
-  const solvable = GameState.solve(level);
-  console.log(`第 ${level.id} 关 可解性:`, solvable.solvable, '顺序:', solvable.order);
+  currentSolvable = GameState.solveSliding(level, 120000).solvable;
+  console.log(`第 ${level.id} 关 可解性(滑动感知):`, currentSolvable);
   render();
   renderTimer();
   updateStatus();
@@ -233,8 +235,6 @@ setInterval(() => {
 }, 500);
 
 function updateStatus(): void {
-  const level = state.level;
-  const solved = GameState.solve(level);
   const remaining = state.pigs.length;
   const toolMode = grabMode
     ? ' | 🐷 请点一只猪抓走'
@@ -243,7 +243,7 @@ function updateStatus(): void {
       : '';
   statusEl.textContent =
     `第 ${levelIndex + 1}/${levels.length} 关 | 剩余 ${remaining} | 点击 ${state.taps} 次 | ` +
-    `${solved.solvable ? '✓必有解' : '✗无解'}${toolMode}`;
+    `${currentSolvable ? '✓必有解' : '✗无解'}${toolMode}`;
 }
 
 function render(): void {
@@ -525,7 +525,7 @@ function confirmVerify(): void {
 }
 
 function doHint(): void {
-  const p = state.hint();
+  const p = state.hintSliding();
   if (p) {
     hintPigId = p.id;
     if (hintTimer !== undefined) window.clearTimeout(hintTimer);
