@@ -159,9 +159,18 @@ export function placeModules(
   boardH: number,
   margin = 2,
   maxAttempts = 60,
+  mode: 'corridor' | 'packed' = 'corridor',
 ): PlacedModule[] {
   const placed: PlacedModule[] = [];
   let idBase = 0;
+  // 打包模式:从中心向外螺旋放置,更密集
+  const spiralPos = (k: number): { x: number; y: number } => {
+    const side = Math.ceil(Math.sqrt(k + 1));
+    const half = Math.floor(side / 2);
+    const cx = Math.floor(boardW / 2);
+    const cy = Math.floor(boardH / 2);
+    return { x: cx + ((k % side) - half) * (margin + 6), y: cy + (Math.floor(k / side) - half) * (margin + 6) };
+  };
   for (const def of defs) {
     let done = false;
     for (let attempt = 0; attempt < maxAttempts && !done; attempt++) {
@@ -170,52 +179,59 @@ export function placeModules(
       const base = moduleBounds(def);
       const bw = rot % 2 === 0 ? base.w : base.h;
       const bh = rot % 2 === 0 ? base.h : base.w;
-      const ox = margin + Math.floor(((attempt * 37) % (boardW - bw - margin * 2)));
-      const oy = margin + Math.floor(((attempt * 53) % (boardH - bh - margin * 2)));
+      let ox: number;
+      let oy: number;
+      if (mode === 'packed') {
+        const p = spiralPos(placed.length);
+        ox = p.x - Math.floor(bw / 2);
+        oy = p.y - Math.floor(bh / 2);
+      } else {
+        ox = margin + Math.floor(((attempt * 37) % (boardW - bw - margin * 2)));
+        oy = margin + Math.floor(((attempt * 53) % (boardH - bh - margin * 2)));
+      }
       const t = transformModule(def, rot, mirror, ox, oy);
       const box = { x: ox - 1, y: oy - 1, w: bw + 2, h: bh + 2 };
       if (box.x < 0 || box.y < 0 || box.x + box.w > boardW || box.y + box.h > boardH) continue;
       if (placed.some((p) => boxOverlap(p.box, box))) continue;
-      // 走廊感知:新模块的猪不能落在已有模块的退出射线上;已有模块的猪不能落在新模块的退出射线上
-      const newCells = new Set<string>();
-      for (const p of t.pigs) for (const c of pigCells(p)) newCells.add(`${c.x},${c.y}`);
-      let conflict = false;
-      for (const prev of placed) {
-        // 已有模块的猪是否在新模块的射线上
-        for (const p of t.pigs) {
-          const d = DIR_VEC[p.dir];
-          let x = p.x + d.x;
-          let y = p.y + d.y;
-          while (x >= 0 && y >= 0 && x < boardW && y < boardH) {
-            const prevCells = prev.pigs.flatMap(pigCells);
-            if (prevCells.some((c) => c.x === x && c.y === y)) {
-              conflict = true;
-              break;
+      if (mode === 'corridor') {
+        // 走廊感知:新模块的猪不能落在已有模块的退出射线上;已有模块的猪不能落在新模块的退出射线上
+        const newCells = new Set<string>();
+        for (const p of t.pigs) for (const c of pigCells(p)) newCells.add(`${c.x},${c.y}`);
+        let conflict = false;
+        for (const prev of placed) {
+          for (const p of t.pigs) {
+            const d = DIR_VEC[p.dir];
+            let x = p.x + d.x;
+            let y = p.y + d.y;
+            while (x >= 0 && y >= 0 && x < boardW && y < boardH) {
+              if (prev.pigs.some((q) => pigCells(q).some((c) => c.x === x && c.y === y))) {
+                conflict = true;
+                break;
+              }
+              x += d.x;
+              y += d.y;
             }
-            x += d.x;
-            y += d.y;
+            if (conflict) break;
+          }
+          if (conflict) break;
+          for (const p of prev.pigs) {
+            const d = DIR_VEC[p.dir];
+            let x = p.x + d.x;
+            let y = p.y + d.y;
+            while (x >= 0 && y >= 0 && x < boardW && y < boardH) {
+              if (newCells.has(`${x},${y}`)) {
+                conflict = true;
+                break;
+              }
+              x += d.x;
+              y += d.y;
+            }
+            if (conflict) break;
           }
           if (conflict) break;
         }
-        if (conflict) break;
-        // 新模块的猪是否在已有模块的射线上
-        for (const p of prev.pigs) {
-          const d = DIR_VEC[p.dir];
-          let x = p.x + d.x;
-          let y = p.y + d.y;
-          while (x >= 0 && y >= 0 && x < boardW && y < boardH) {
-            if (newCells.has(`${x},${y}`)) {
-              conflict = true;
-              break;
-            }
-            x += d.x;
-            y += d.y;
-          }
-          if (conflict) break;
-        }
-        if (conflict) break;
+        if (conflict) continue;
       }
-      if (conflict) continue;
       placed.push({
         def,
         pigs: t.pigs,
@@ -426,6 +442,107 @@ export function generateTrapLevel(
     if (modules.length < numModules) continue;
     const level = assembleLevel(modules, boardW, boardH, targetFillers);
     if (!level) continue;
+    if (verifyLevel(level, modules)) return level;
+  }
+  return null;
+}
+
+/**
+ * 生成"多重陷阱串联"关卡:经典四车环垂直堆叠成链。
+ * 每环钥匙(3v)向下退出,被下一环的猪挡住 → 必须从最下环开始逐环解开。
+ * 支持镜像变体(钥匙方向不变)增加视觉差异;少量填充猪。
+ */
+export function generateChainedLevel(
+  seed: number,
+  numRings: number,
+  spacing = 4,
+  targetFillers = 0,
+): Level | null {
+  const x0 = 8;
+  const y0 = 3;
+  const boardW = x0 + 16;
+  const boardH = y0 + numRings * spacing + 8;
+  const defs: TrapModuleDef[] = [];
+  for (let i = 0; i < numRings; i++) defs.push(CLASSIC_RING);
+
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const level: Level = { id: 0, width: boardW, height: boardH, pigs: [], obstacles: [] };
+    const occ = new Set<string>();
+    const key = (x: number, y: number) => `${x},${y}`;
+    const modules: PlacedModule[] = [];
+    let ok = true;
+    for (let i = 0; i < numRings; i++) {
+      const mirror = ((seed + attempt * 37 + i * 131) >>> 0) % 2 === 1;
+      const t = transformModule(CLASSIC_RING, 0, mirror, x0, y0 + i * spacing);
+      const idBase = i * 4;
+      const placedPigs: TrapPig[] = [];
+      for (const p of t.pigs) {
+        for (const c of pigCells(p)) {
+          if (occ.has(key(c.x, c.y))) {
+            ok = false;
+            break;
+          }
+          occ.add(key(c.x, c.y));
+        }
+        if (!ok) break;
+        level.pigs.push({ id: level.pigs.length, pos: { x: p.x, y: p.y }, dir: p.dir });
+        placedPigs.push(p);
+      }
+      if (!ok) break;
+      modules.push({
+        def: CLASSIC_RING,
+        pigs: placedPigs,
+        keyIdx: 2,
+        decoyIdx: 3,
+        box: { x: x0 - 1, y: y0 + i * spacing - 1, w: 14, h: 5 },
+        idBase,
+      });
+    }
+    if (!ok) continue;
+
+    // 少量填充猪(可选),放在模块包围盒外、指向最近边缘、射线畅通
+    if (targetFillers > 0) {
+      const inB = (x: number, y: number) => x >= 0 && y >= 0 && x < boardW && y < boardH;
+      let added = 0;
+      for (let pass = 0; pass < 6 && added < targetFillers; pass++) {
+        for (let y = 0; y < boardH && added < targetFillers; y++) {
+          for (let x = 0; x < boardW && added < targetFillers; x++) {
+            if (occ.has(key(x, y))) continue;
+            if (x >= x0 - 1 && x < x0 + 13) continue; // 避开模块列
+            const candidates: { dir: Dir; d: number }[] = [
+              { dir: Dir.Right, d: boardW - 1 - x },
+              { dir: Dir.Left, d: x },
+              { dir: Dir.Down, d: boardH - 1 - y },
+              { dir: Dir.Up, d: y },
+            ].sort((a, b) => a.d - b.d);
+            for (const c of candidates) {
+              const dv = DIR_VEC[c.dir];
+              const tx = x - dv.x;
+              const ty = y - dv.y;
+              if (!inB(tx, ty) || occ.has(key(tx, ty))) continue;
+              let nx = x + dv.x;
+              let ny = y + dv.y;
+              let clear = true;
+              while (inB(nx, ny)) {
+                if (occ.has(key(nx, ny))) {
+                  clear = false;
+                  break;
+                }
+                nx += dv.x;
+                ny += dv.y;
+              }
+              if (!clear) continue;
+              occ.add(key(x, y));
+              occ.add(key(tx, ty));
+              level.pigs.push({ id: level.pigs.length, pos: { x, y }, dir: c.dir });
+              added++;
+              break;
+            }
+          }
+        }
+      }
+    }
+
     if (verifyLevel(level, modules)) return level;
   }
   return null;
