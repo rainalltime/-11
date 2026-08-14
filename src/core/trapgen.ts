@@ -547,3 +547,125 @@ export function generateChainedLevel(
   }
   return null;
 }
+
+/**
+ * 蛇形多重陷阱链:环沿 S 形路径排布,每环旋转使其钥匙(3v)指向下一个环。
+ * 钥匙方向随机(上下左右),玩家必须沿蛇形回溯、逐环识别钥匙,打破"统一朝下"的规律。
+ */
+export function generateSerpentineLevel(
+  seed: number,
+  numRings: number,
+  cols = 3,
+  spacing = 8,
+  targetFillers = 0,
+): Level | null {
+  // 生成蛇形路径的中心点
+  const centers: { x: number; y: number }[] = [];
+  const stepY = spacing;
+  const stepX = spacing;
+  let x = spacing;
+  let y = spacing;
+  let dirX = 1;
+  for (let i = 0; i < numRings; i++) {
+    centers.push({ x, y });
+    if ((i + 1) % cols === 0) {
+      // 换行:向下走一步,反向
+      y += stepY;
+      dirX *= -1;
+    } else {
+      x += dirX * stepX;
+    }
+  }
+  const boardW = (cols + 1) * spacing + 6;
+  const boardH = Math.ceil(numRings / cols) * spacing + spacing + 6;
+  const ROT_IDX: Record<number, number> = { [Dir.Up]: 3, [Dir.Right]: 0, [Dir.Down]: 1, [Dir.Left]: 2 };
+
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const level: Level = { id: 0, width: boardW, height: boardH, pigs: [], obstacles: [] };
+    const occ = new Set<string>();
+    const key = (a: number, b: number) => `${a},${b}`;
+    const modules: PlacedModule[] = [];
+    let ok = true;
+    for (let i = 0; i < numRings; i++) {
+      // 目标方向:朝下一个环中心(最后一环朝最近边缘)
+      let targetDir: Dir = Dir.Down;
+      if (i < numRings - 1) {
+        const dx = centers[i + 1].x - centers[i].x;
+        const dy = centers[i + 1].y - centers[i].y;
+        targetDir = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? Dir.Right : Dir.Left) : (dy > 0 ? Dir.Down : Dir.Up);
+      }
+      // 让钥匙(基准朝下)旋转到指向 targetDir
+      const rot = (ROT_IDX[targetDir] - ROT_IDX[Dir.Down] + 4) % 4;
+      const mirror = ((seed + attempt * 37 + i * 131) >>> 0) % 2 === 1;
+      const t = transformModule(CLASSIC_RING, rot, mirror, centers[i].x - 6, centers[i].y - 2);
+      const idBase = i * 4;
+      const placedPigs: TrapPig[] = [];
+      for (const p of t.pigs) {
+        for (const c of pigCells(p)) {
+          if (occ.has(key(c.x, c.y))) {
+            ok = false;
+            break;
+          }
+          occ.add(key(c.x, c.y));
+        }
+        if (!ok) break;
+        level.pigs.push({ id: level.pigs.length, pos: { x: p.x, y: p.y }, dir: p.dir });
+        placedPigs.push(p);
+      }
+      if (!ok) break;
+      modules.push({
+        def: CLASSIC_RING,
+        pigs: placedPigs,
+        keyIdx: 2,
+        decoyIdx: 3,
+        box: { x: centers[i].x - 7, y: centers[i].y - 3, w: 14, h: 6 },
+        idBase,
+      });
+    }
+    if (!ok) continue;
+    // 可选填充猪
+    if (targetFillers > 0) {
+      const inB = (a: number, b: number) => a >= 0 && b >= 0 && a < boardW && b < boardH;
+      let added = 0;
+      for (let pass = 0; pass < 8 && added < targetFillers; pass++) {
+        for (let yy = 0; yy < boardH && added < targetFillers; yy++) {
+          for (let xx = 0; xx < boardW && added < targetFillers; xx++) {
+            if (occ.has(key(xx, yy))) continue;
+            if (modules.some((m) => xx >= m.box.x && xx < m.box.x + m.box.w && yy >= m.box.y && yy < m.box.y + m.box.h)) continue;
+            const candidates: { dir: Dir; d: number }[] = [
+              { dir: Dir.Right, d: boardW - 1 - xx },
+              { dir: Dir.Left, d: xx },
+              { dir: Dir.Down, d: boardH - 1 - yy },
+              { dir: Dir.Up, d: yy },
+            ].sort((a, b) => a.d - b.d);
+            for (const c of candidates) {
+              const dv = DIR_VEC[c.dir];
+              const tx = xx - dv.x;
+              const ty = yy - dv.y;
+              if (!inB(tx, ty) || occ.has(key(tx, ty))) continue;
+              let nx = xx + dv.x;
+              let ny = yy + dv.y;
+              let clear = true;
+              while (inB(nx, ny)) {
+                if (occ.has(key(nx, ny))) {
+                  clear = false;
+                  break;
+                }
+                nx += dv.x;
+                ny += dv.y;
+              }
+              if (!clear) continue;
+              occ.add(key(xx, yy));
+              occ.add(key(tx, ty));
+              level.pigs.push({ id: level.pigs.length, pos: { x: xx, y: yy }, dir: c.dir });
+              added++;
+              break;
+            }
+          }
+        }
+      }
+    }
+    if (verifyLevel(level, modules)) return level;
+  }
+  return null;
+}
