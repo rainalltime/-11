@@ -6,7 +6,7 @@ import { loadProgress, saveProgress } from './core/progress';
 import { generateEggs } from './core/eggs';
 import { sfx, setMuted, isMuted, setSfxVolume } from './core/sound';
 import { startMusic, setMusicMuted, setMusicVolume } from './core/music';
-import { DIR_VEC, Dir, Level, screenDir } from './core/types';
+import { DIR_VEC, Dir, Level } from './core/types';
 import { Renderer, RenderPig } from './render/renderer';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -405,7 +405,8 @@ function lerp(a: number, b: number, k: number): number {
 /** 回弹位置:0~0.75 滑近障碍 → 0.75~0.9 向后回弹 → 0.9~1 归位。 */
 function animPos(a: Anim): { x: number; y: number } {
   if (a.bounce) {
-    const d = screenDir(a.dir);
+    // 回弹方向要考虑 u/v 独立缩放(手机竖屏铺满)
+    const d = renderer.screenOffset(a.dir);
     const rx = a.toX - d.x * a.bounce;
     const ry = a.toY - d.y * a.bounce;
     const t = a.t;

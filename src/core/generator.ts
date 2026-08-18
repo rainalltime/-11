@@ -34,6 +34,9 @@ export interface GenConfig {
   centerRatio?: number;
   /** 猪只放在"圆心 + 半径"范围内(单位:旋转后格距)。缺省 = 不限(全棋盘)。 */
   circleRadius?: number;
+  /** 手机竖屏适配:生成区由圆变椭圆,长宽比 = v 半径 / u 半径(≈ 手机屏高/宽,如 2.0)。
+   *  与 circleRadius 一起用时,rv = circleRadius × aspect;单独用时按棋盘自动铺满。 */
+  phoneAspect?: number;
   /** 朝向模式:让相邻两行/两列方向相反,制造更多阻挡链(难度↑)。缺省 = outward */
   pattern?: DirPattern;
   /** 调试钩子:每放一只猪后回调(用于可视化单步调试生成过程) */
@@ -74,6 +77,60 @@ export function patternDir(x: number, y: number, pat: DirPattern): Dir {
 function patternFirst(x: number, y: number, pat: DirPattern, rand: () => number): Dir[] {
   const preferred = patternDir(x, y, pat);
   return [preferred, ...shuffle(DIRS.filter((d) => d !== preferred), rand)];
+}
+
+/**
+ * 生成区(屏幕空间 u=x-y, v=x+y):
+ * - 默认不裁剪(全棋盘);
+ * - circleRadius → 圆;
+ * - phoneAspect → 手机竖屏椭圆(铺满屏,不按圆形裁剪)。
+ */
+interface GenRegion {
+  active: boolean;
+  cu: number;
+  cv: number;
+  ru: number;
+  rv: number;
+}
+
+function buildRegion(
+  width: number,
+  height: number,
+  cu: number,
+  cv: number,
+  cfg: { circleRadius?: number; phoneAspect?: number },
+): GenRegion {
+  const aspect = cfg.phoneAspect ?? 1;
+  if (cfg.circleRadius !== undefined && Number.isFinite(cfg.circleRadius)) {
+    const r = cfg.circleRadius;
+    return { active: true, cu, cv, ru: r, rv: r * aspect };
+  }
+  if (aspect !== 1) {
+    // 手机竖屏自适应:椭圆尽量填满屏幕高度,长宽比 = aspect
+    const uHalf = Math.min(cu + (height - 1), (width - 1) - cu);
+    const vHalf = Math.min(cv, (width + height - 2) - cv);
+    const ru = Math.min(uHalf, vHalf / aspect) * 0.9;
+    return { active: true, cu, cv, ru, rv: ru * aspect };
+  }
+  return { active: false, cu, cv, ru: 0, rv: 0 };
+}
+
+/** 是否在生成区内(屏幕空间椭圆/圆;未启用时恒真)。 */
+function inRegion(reg: GenRegion, x: number, y: number): boolean {
+  if (!reg.active) return true;
+  const u = (x - y) - reg.cu;
+  const v = (x + y) - reg.cv;
+  const nu = u / reg.ru;
+  const nv = v / reg.rv;
+  return nu * nu + nv * nv <= 1;
+}
+
+/** 归一化半径(0=中心,1=边界;未启用时返回 0)。 */
+function regionRadius(reg: GenRegion, x: number, y: number): number {
+  if (!reg.active) return 0;
+  const u = (x - y) - reg.cu;
+  const v = (x + y) - reg.cv;
+  return Math.sqrt((u / reg.ru) ** 2 + (v / reg.rv) ** 2);
 }
 
 /** 从 (x,y) 出发沿 dir 的射线上的格子(不含起点)。 */
@@ -145,22 +202,20 @@ function generateLevelOnce(cfg: GenConfig): Level {
   const occupied = new Set<string>();
   const inB = (x: number, y: number) => x >= 0 && y >= 0 && x < cfg.width && y < cfg.height;
 
-  // 圆心范围:整体旋转 45° 后,猪只生成在中心半径 circleRadius 的圆内
-  const R = cfg.circleRadius ?? Infinity;
-  const hasCircle = Number.isFinite(R);
+  // 生成区:整体旋转 45° 后,在屏幕空间(u=x-y, v=x+y)裁剪。
+  // 默认不裁剪(全棋盘);circleRadius = 圆;phoneAspect = 手机竖屏椭圆(铺满屏)。
   const cu = (cfg.width - cfg.height) / 2 + style.offU; // 中心点的 u = x - y
   const cv = (cfg.width + cfg.height - 2) / 2 + style.offV; // 中心点的 v = x + y
-  const cellRadius = (x: number, y: number) => Math.hypot(x - y - cu, x + y - cv);
-  const inCircle = (x: number, y: number) => cellRadius(x, y) <= R;
-  const innerR = R * 0.55;
+  const region = buildRegion(cfg.width, cfg.height, cu, cv, cfg);
+  const inCircle = (x: number, y: number) => inRegion(region, x, y);
   const distEdge = (x: number, y: number) =>
     Math.min(x, y, cfg.width - 1 - x, cfg.height - 1 - y);
-  // 中间区:有圆约束 → 圆内半径≤innerR;无 → 距边≥2
+  // 中间区:有生成区 → 归一化半径≤0.55;无 → 距边≥2
   const isInner = (x: number, y: number) =>
-    hasCircle ? inCircle(x, y) && cellRadius(x, y) <= innerR : distEdge(x, y) >= 2;
-  // 外圈:有圆约束 → 圆内半径>innerR;无 → 距边≤1
+    region.active ? inCircle(x, y) && regionRadius(region, x, y) <= 0.55 : distEdge(x, y) >= 2;
+  // 外圈:有生成区 → 归一化半径>0.55;无 → 距边≤1
   const isOuter = (x: number, y: number) =>
-    hasCircle ? inCircle(x, y) && cellRadius(x, y) > innerR : distEdge(x, y) <= 1;
+    region.active ? inCircle(x, y) && regionRadius(region, x, y) > 0.55 : distEdge(x, y) <= 1;
 
   // 1) 不再生成障碍物
 
@@ -178,8 +233,8 @@ function generateLevelOnce(cfg: GenConfig): Level {
   const pigPlaceable = (fx: number, fy: number, dir: Dir): boolean => {
     const d = DIR_VEC[dir];
     if (!cellFree(fx, fy) || !cellFree(fx - d.x, fy - d.y)) return false;
-    // 只生成在"圆心 + 半径"范围内:两个身体格都必须落在圆内
-    if (hasCircle && (!inCircle(fx, fy) || !inCircle(fx - d.x, fy - d.y))) return false;
+    // 只生成在"生成区"内:两个身体格都必须落在区里(不裁剪时恒真)
+    if (region.active && (!inCircle(fx, fy) || !inCircle(fx - d.x, fy - d.y))) return false;
     return rayClear(fx, fy, dir);
   };
 
@@ -337,12 +392,10 @@ export function generateCascadeLevel(cfg: GenConfig): Level {
   const occupied = new Set<string>();
   const inB = (x: number, y: number) =>
     x >= 0 && y >= 0 && x < cfg.width && y < cfg.height;
-  const R = cfg.circleRadius ?? Infinity;
-  const hasCircle = Number.isFinite(R);
   const cu = (cfg.width - cfg.height) / 2 + style.offU;
   const cv = (cfg.width + cfg.height - 2) / 2 + style.offV;
-  const cellRadius = (x: number, y: number) => Math.hypot(x - y - cu, x + y - cv);
-  const inCircle = (x: number, y: number) => !hasCircle || cellRadius(x, y) <= R;
+  const region = buildRegion(cfg.width, cfg.height, cu, cv, cfg);
+  const inCircle = (x: number, y: number) => inRegion(region, x, y);
   const free = (x: number, y: number) => inB(x, y) && !occupied.has(key(x, y));
   let pigId = 0;
   const centerX = (cv + cu) / 2; // 圆心 x

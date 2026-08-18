@@ -41,9 +41,12 @@ export interface RenderPig {
 /**
  * 菱形渲染器:整体画面旋转 45°,猪和小方格都倾斜。
  * 虚拟网格 (x,y) → 屏幕 ((x-y)*h, (x+y)*h);格子是边长 h 的菱形,猪是沿对角线的 1×2 长猪。
+ * 手机竖屏适配:u 轴(x-y)与 v 轴(x+y)独立缩放,让"有猪的区域"铺满整个屏幕
+ * (不再只按 min(宽,高) 等比例缩放而留下上下大片空白)。
  */
 export class Renderer {
-  private readonly h: number;
+  private readonly hu: number;
+  private readonly hv: number;
   private readonly ox: number;
   private readonly oy: number;
 
@@ -77,14 +80,17 @@ export class Renderer {
     }
     const clusterW = uMax - uMin + 2;
     const clusterH = vMax - vMin + 2;
-    this.h = Math.max(
-      2,
-      Math.floor(
-        Math.min(canvas.width / (clusterW + 1), canvas.height / (clusterH + 1)),
-      ),
-    );
-    this.ox = canvas.width / 2 - ((uMin + uMax) / 2) * this.h;
-    this.oy = canvas.height / 2 - ((vMin + vMax) / 2) * this.h;
+    // 手机竖屏:u/v 独立缩放铺满整屏(手机屏高>宽 → hv 通常 > hu)。
+    // 但限制拉伸比,避免横屏(桌面)把猪压得面目全非——极端屏幕居中留边。
+    const maxStretch = 1.6;
+    let hu = Math.max(2, canvas.width / (clusterW + 1));
+    let hv = Math.max(2, canvas.height / (clusterH + 1));
+    if (hv / hu > maxStretch) hv = hu * maxStretch;
+    if (hu / hv > maxStretch) hu = hv * maxStretch;
+    this.hu = hu;
+    this.hv = hv;
+    this.ox = canvas.width / 2 - ((uMin + uMax) / 2) * this.hu;
+    this.oy = canvas.height / 2 - ((vMin + vMax) / 2) * this.hv;
     this.tinted = [];
     if (baseSprite && baseSprite.complete && baseSprite.naturalWidth > 0) {
       this.tinted = ANIMAL_COLORS.map((c) => tintSprite(baseSprite, c));
@@ -94,16 +100,16 @@ export class Renderer {
   private readonly tinted: HTMLCanvasElement[] = [];
 
   get cellSize(): number {
-    return this.h;
+    return Math.min(this.hu, this.hv);
   }
 
   cellCenter(x: number, y: number): Vec {
-    return { x: this.ox + (x - y) * this.h, y: this.oy + (x + y) * this.h };
+    return { x: this.ox + (x - y) * this.hu, y: this.oy + (x + y) * this.hv };
   }
 
   cellAt(px: number, py: number): Vec | null {
-    const u = (px - this.ox) / this.h;
-    const v = (py - this.oy) / this.h;
+    const u = (px - this.ox) / this.hu;
+    const v = (py - this.oy) / this.hv;
     const x = Math.round((u + v) / 2);
     const y = Math.round((v - u) / 2);
     if (x < 0 || y < 0 || x >= this.level.width || y >= this.level.height) return null;
@@ -112,8 +118,15 @@ export class Renderer {
     return { x, y };
   }
 
+  /** 某个朝向对应的屏幕像素向量(考虑了 u/v 独立缩放)。 */
+  screenOffset(dir: import('../core/types').Dir): Vec {
+    const s = screenDir(dir);
+    return { x: s.x * this.hu, y: s.y * this.hv };
+  }
+
   draw(pigs: RenderPig[], hintId?: number, hintBlink = 1): void {
-    const { ctx, h, level } = this;
+    const { ctx, hu, hv, level } = this;
+    const h = Math.min(hu, hv);
     // 背景:有背景图则覆盖绘制,否则用程序化场景兜底
     if (this.bgImage && this.bgImage.complete && this.bgImage.naturalWidth > 0) {
       drawCover(ctx, this.bgImage, this.canvas.width, this.canvas.height);
@@ -154,8 +167,9 @@ export class Renderer {
   }
 
   private drawPig(rp: RenderPig): void {
-    const { ctx, h } = this;
-    const sd = screenDir(rp.pig.dir);
+    const { ctx, hu, hv } = this;
+    const h = Math.min(hu, hv);
+    const sd = this.screenOffset(rp.pig.dir);
     // 头部 = 动画插值位置;尾部 = 头部 - 屏幕方向*格 —— 整只猪沿对角线轨迹滑动
     const front = { x: rp.px, y: rp.py };
     const rear = { x: rp.px - sd.x * h, y: rp.py - sd.y * h };
@@ -171,7 +185,7 @@ export class Renderer {
       const midX = (front.x + rear.x) / 2;
       const midY = (front.y + rear.y) / 2;
       const sizeW = h * 1.3;
-      const sizeH = 2 * Math.SQRT2 * h;
+      const sizeH = 2 * Math.hypot(sd.x, sd.y);
       const angle = Math.atan2(sd.x, -sd.y) + Math.PI;
       ctx.save();
       ctx.translate(midX, midY);
