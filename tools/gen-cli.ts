@@ -48,15 +48,15 @@ const args = parseArgs();
 const count = Number(args.count ?? 1000);
 const baseSeed = Number(args.seed ?? 20260806);
 const outPath = resolve(args.out ?? 'public/levels/levels.json');
-const radiusMin = Number(args.radiusMin ?? 16);
-const radiusMax = Number(args.radiusMax ?? 28);
+const radiusMin = Number(args.radiusMin ?? 10);
+const radiusMax = Number(args.radiusMax ?? 15);
 /** 并行分片:只生成 [bandStart, bandEnd] 档(缺省全档) */
 const bandStart = Number(args.bandStart ?? 0);
 const bandEndArg = Number(args.bandEnd ?? -1);
 const maxFill = Number(args.fill ?? 40);
 const pattern = (args.pattern ?? 'pinwheel') as DirPattern;
-/** 手机竖屏适配:生成区椭圆长宽比 v/u(≈ 屏高/屏宽),缺省 2.0 */
-const aspect = Number(args.aspect ?? 2.0);
+/** 手机竖屏适配:生成区椭圆长宽比 v/u(≈ 屏高/屏宽),缺省 2.2 */
+const aspect = Number(args.aspect ?? 2.2);
 /** 每档候选数 = max(30, need × candFactor),越大越不容易雷同但越慢 */
 const candFactor = Number(args.cand ?? 2.0);
 const maxJaccard = Number(args.jaccard ?? 1);

@@ -101,14 +101,16 @@ function buildRegion(
   cfg: { circleRadius?: number; phoneAspect?: number },
 ): GenRegion {
   const aspect = cfg.phoneAspect ?? 1;
+  const uHalf = Math.min(cu + (height - 1), (width - 1) - cu);
+  const vHalf = Math.min(cv, (width + height - 2) - cv);
   if (cfg.circleRadius !== undefined && Number.isFinite(cfg.circleRadius)) {
+    // 手机竖屏椭圆:保证长宽比 = aspect,且不超出棋盘(避免被棋盘截断后比例走样)
     const r = cfg.circleRadius;
-    return { active: true, cu, cv, ru: r, rv: r * aspect };
+    const ru = Math.max(1, Math.min(r, uHalf, vHalf / aspect));
+    return { active: true, cu, cv, ru, rv: ru * aspect };
   }
   if (aspect !== 1) {
     // 手机竖屏自适应:椭圆尽量填满屏幕高度,长宽比 = aspect
-    const uHalf = Math.min(cu + (height - 1), (width - 1) - cu);
-    const vHalf = Math.min(cv, (width + height - 2) - cv);
     const ru = Math.min(uHalf, vHalf / aspect) * 0.9;
     return { active: true, cu, cv, ru, rv: ru * aspect };
   }
