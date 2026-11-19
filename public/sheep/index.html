@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>挪挪胖羊 · 原版引擎</title>
+<style>
+  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#111;touch-action:none;}
+  #game-canvas{display:block;width:100vw;height:100vh;outline:none;}
+  #boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;
+        color:#fff;font:14px/1.6 system-ui,"Microsoft YaHei",sans-serif;background:#111;z-index:10;transition:opacity .3s;}
+  #boot.hide{opacity:0;pointer-events:none;}
+  #boot .bar{width:220px;height:4px;background:#333;border-radius:2px;overflow:hidden;margin-top:12px;}
+  #boot .bar i{display:block;height:100%;width:0;background:#07c160;transition:width .2s;}
+  #boot .err{color:#ff8080;max-width:80vw;white-space:pre-wrap;font-size:12px;margin-top:12px;}
+</style>
+</head>
+<body>
+<canvas id="game-canvas"></canvas>
+<div id="boot"><div>正在加载挪挪胖羊（原版引擎）…</div><div class="bar"><i id="boot-bar"></i></div><div id="boot-err" class="err"></div></div>
+<script>window.__PIGRUN_APPID="wxa732939571d142ec";window.__PIGRUN_DATA_VERSION=3;</script>
+<script>window.__PIGRUN_PRELOAD_AB=["big_scene_1dab399c0e3ec50109d26a44cdd75444.u3d", "obstacle_a_24fa3542e86241a4dac389a10ad69277.u3d", "skinmodel_1_648de4770687525a82eec9fcb47198ff.u3d", "small_scene_3c6c310fe62b48814bb8fc5cd3827512.u3d", "special_sheep_a_b5e0d1cc0ae2b88f042617835b07b6ae.u3d", "tail_76a0588b11aa204c2d649b404e8dfd88.u3d"];</script>
+<script src="shim/module-loader.js"></script>
+<script src="shim/wx-shim.js"></script>
+<script src="vendor/unityplugin.js"></script>
+<script src="vendor/game.bundle.js"></script>
+<script src="shim/bootstrap.js"></script>
+<script src="eggs/eggs-data.js"></script>
+<script src="eggs/eggs-overlay.js"></script>
+</body>
+</html>

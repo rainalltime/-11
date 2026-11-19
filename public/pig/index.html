@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>解救小猪 · 原版引擎</title>
+<style>
+  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#111;touch-action:none;}
+  #game-canvas{display:block;width:100vw;height:100vh;outline:none;}
+  #boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;
+        color:#fff;font:14px/1.6 system-ui,"Microsoft YaHei",sans-serif;background:#111;z-index:10;transition:opacity .3s;}
+  #boot.hide{opacity:0;pointer-events:none;}
+  #boot .bar{width:220px;height:4px;background:#333;border-radius:2px;overflow:hidden;margin-top:12px;}
+  #boot .bar i{display:block;height:100%;width:0;background:#07c160;transition:width .2s;}
+  #boot .err{color:#ff8080;max-width:80vw;white-space:pre-wrap;font-size:12px;margin-top:12px;}
+</style>
+</head>
+<body>
+<canvas id="game-canvas"></canvas>
+<div id="boot"><div>正在加载解救小猪（原版引擎）…</div><div class="bar"><i id="boot-bar"></i></div><div id="boot-err" class="err"></div></div>
+<script src="shim/module-loader.js"></script>
+<script src="shim/wx-shim.js"></script>
+<script src="vendor/minigamecommon.js"></script>
+<script src="vendor/unityplugin.js"></script>
+<script src="vendor/game.bundle.js"></script>
+<script src="shim/bootstrap.js"></script>
+<script src="eggs/eggs-data.js"></script>
+<script src="eggs/eggs-overlay.js"></script>
+</body>
+</html>
