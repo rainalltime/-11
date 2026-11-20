@@ -165,6 +165,20 @@
     toastEl.__t = setTimeout(function () { toastEl.style.opacity = '0'; }, 2200);
   }
 
+  // 暂停按钮热区：游戏里暂停图标的可点区域比图标本身偏下，这里做一个透明热区，
+  // 点左上角就把触摸转发到引擎实际认的坐标（羊：40,70）。
+  var pauseHot = createEl('div');
+  pauseHot.id = 'pigrun-pause-hot';
+  pauseHot.style.cssText = 'position:fixed;left:0;top:0;width:64px;height:96px;z-index:2147482999;background:transparent;touch-action:manipulation;';
+  pauseHot.addEventListener('pointerup', function (e) {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!window.__pigrunEmitTouch) return;
+    window.__pigrunEmitTouch('touchstart', 25, 55);
+    setTimeout(function () { window.__pigrunEmitTouch && window.__pigrunEmitTouch('touchend', 25, 55); }, 60);
+  }, { passive: false });
+  mount(pauseHot);
+
   // 关卡日志埋点：两个游戏在进入新关卡时都会打印关卡 ID/名字。
   ;['log', 'info'].forEach(function (k) {
     var orig = console[k];
