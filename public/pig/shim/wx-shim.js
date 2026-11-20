@@ -640,6 +640,22 @@
         }));
       } catch (e) {}
     }
+
+    // 左上角暂停图标的实际命中点在 (25,55)，这里做一次转发兜底。
+    var pauseForwarding = false;
+    function maybeForwardPause(x, y) {
+      if (pauseForwarding) return;
+      if (x > 64 || y > 96) return;
+      if (Math.abs(x - 25) < 2 && Math.abs(y - 55) < 2) return;
+      pauseForwarding = true;
+      setTimeout(function () {
+        try { root.__pigrunEmitTouch && root.__pigrunEmitTouch('touchstart', 25, 55); } catch (e) {}
+        setTimeout(function () {
+          try { root.__pigrunEmitTouch && root.__pigrunEmitTouch('touchend', 25, 55); } catch (e) {}
+          pauseForwarding = false;
+        }, 60);
+      }, 30);
+    }
     function normTouch(t) {
       var m = mapPoint(t.clientX, t.clientY);
       return {
@@ -664,6 +680,7 @@
         e.preventDefault();
         var ev = normEvent(e);
         var first = ev.changedTouches[0] || ev.touches[0];
+        if (first && type === 'touchstart') maybeForwardPause(first.clientX, first.clientY);
         if (first) {
           fireMouse('mousemove', first.clientX, first.clientY, type === 'touchend' ? 0 : 1);
           if (type === 'touchstart') setTimeout(function () { fireMouse('mousedown', first.clientX, first.clientY, 1); }, 40);
@@ -679,6 +696,7 @@
       if (!isCanvas(e)) return;
       e.preventDefault();
       var mp = mapPoint(e.clientX, e.clientY);
+      maybeForwardPause(e.clientX, e.clientY);
       fireMouse('mousemove', e.clientX, e.clientY, 1);
       setTimeout(function () { fireMouse('mousedown', e.clientX, e.clientY, 1); }, 40);
       var t = { identifier: 0, clientX: mp[0], clientY: mp[1], pageX: mp[0], pageY: mp[1], screenX: e.screenX, screenY: e.screenY, force: 1 };
