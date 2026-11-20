@@ -40,22 +40,22 @@
   }
   // 先在本地解 gzip 再交给引擎：隧道/弱网下 39MB→12MB，首屏快 3 倍。
   async function fetchMaybeGz(url) {
+    var qi = url.indexOf('?');
+    var gzUrl = qi < 0 ? url + '.gz' : url.slice(0, qi) + '.gz' + url.slice(qi);
     if (typeof DecompressionStream !== 'undefined') {
-      try {
-        var qi = url.indexOf('?');
-        var gzUrl = qi < 0 ? url + '.gz' : url.slice(0, qi) + '.gz' + url.slice(qi);
-        var r = await fetch(gzUrl, { headers: NG });
-        if (r.ok) {
-          if (r.body) {
-            var decompressed = new Response(r.body.pipeThrough(new DecompressionStream('gzip')));
-            return await decompressed.arrayBuffer();
-          }
+      for (var attempt = 0; attempt < 5; attempt++) {
+        try {
+          var r = await fetch(gzUrl, { headers: NG });
+          if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + gzUrl);
+          var cl = Number(r.headers.get('content-length') || 0);
           var buf = await r.arrayBuffer();
+          if (cl && buf.byteLength !== cl) throw new Error('truncated ' + buf.byteLength + '/' + cl);
           var ds = new DecompressionStream('gzip');
           return await new Response(new Blob([buf]).stream().pipeThrough(ds)).arrayBuffer();
+        } catch (e) {
+          console.warn('[pigrun] gz attempt ' + (attempt + 1) + ' failed', String(e));
+          await new Promise(function (res) { setTimeout(res, 500 * (attempt + 1)); });
         }
-      } catch (e) {
-        console.warn('[pigrun] gz path failed, falling back', String(e));
       }
     }
     return fetchBuffer(url);
