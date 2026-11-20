@@ -135,6 +135,8 @@
       }, 250);
 
       setTimeout(function () { if (boot) boot.classList.add('hide'); }, 1500);
+      // 兜底：无论引擎内部状态如何，20 秒后一定把加载层收掉（避免一直卡在加载页）
+      setTimeout(function () { try { if (boot) boot.classList.add('hide'); } catch (e) {} }, 20000);
     } catch (e) {
       showError(e);
     }
