@@ -1,0 +1,1 @@
+{"type":"Scene","props":{"width":640,"height":1386},"compId":2,"child":[{"type":"Script","props":{"runtime":"script/MyScene.ts"},"compId":3}],"loadList":[],"loadList3D":[]}

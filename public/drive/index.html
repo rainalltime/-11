@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>开车我贼6</title>
+<style>
+  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#111;touch-action:none;}
+  #game-canvas{display:none;}
+  canvas#layaCanvas{position:fixed;left:0;top:0;width:100vw;height:100vh;outline:none;z-index:1;background:#111;}
+  #err{position:fixed;left:0;right:0;bottom:0;z-index:9;color:#ff9;background:rgba(0,0,0,.7);
+       font:12px/1.5 monospace;padding:8px;white-space:pre-wrap;max-height:40vh;overflow:auto;display:none;}
+</style>
+</head>
+<body>
+<canvas id="game-canvas"></canvas>
+<div id="err"></div>
+<script>
+  window.__realDoc = document;
+  window.onerror = function (msg, src, line, col, err) {
+    var el = window.__realDoc.getElementById('err');
+    el.style.display = 'block';
+    el.textContent += '[error] ' + msg + ' @' + (src || '') + ':' + line + '\n' + ((err && err.stack) || '') + '\n';
+  };
+</script>
+<script src="shim/require-sync.js?v=3"></script>
+<script src="shim/wx-shim.js?v=3"></script>
+<script>
+  window.__log = Function.prototype.bind.call(console.log, console);
+  window.__warn = Function.prototype.bind.call(console.warn, console);
+  window.__errlog = Function.prototype.bind.call(console.error, console);
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e && e.reason;
+    window.__errlog('[reject]', r && (r.stack || r.message || String(r)));
+  });
+  window.addEventListener('error', function (e) {
+    window.__errlog('[onerror]', e.message, e.filename, e.lineno);
+  });
+  // 防止游戏把 console 覆盖成空函数（调试期保留）
+  try {
+    ['log','info','warn','error'].forEach(function (k) {
+      var orig = console[k];
+      if (!orig) return;
+      Object.defineProperty(console, k, { value: Function.prototype.bind.call(orig, console), writable: false, configurable: false });
+    });
+  } catch (e) {}
+</script>
+<script>
+  // Laya.Texture.create 会被游戏逻辑覆盖成错误实现（UI 贴图全部被裁剪），持续纠正
+  (function () {
+    var n = 0;
+    var t = setInterval(function () {
+      n++;
+      try { if (window.__fixTextureCreate) window.__fixTextureCreate(); } catch (e) {}
+      if (n > 200) clearInterval(t);
+    }, 200);
+  })();
+</script>
+<script>window.GameGlobal=window;window.__isAdapterInjected=true;</script>
+<script>window.addEventListener("load",function(){try{if(window.Laya&&!Laya.ClassUtils){Laya.ClassUtils={regClass:function(){},getClass:function(){},getRegClass:function(){}}}}catch(e){}});</script>
+<script src="game.js?v=3"></script>
+<script>
+(function(){
+  var t=setInterval(function(){
+    var fg=window.fgui;
+    if(!fg||!fg.UIPackage) return;
+    var U=fg.UIPackage;
+    if(!U.__patched){U.__patched=1;
+      var o=U.loadPackage;
+      U.loadPackage=function(a,b,c){try{console.log('[UIPkg]',JSON.stringify(a))}catch(e){console.log('[UIPkg] ?')}return o.apply(this,arguments)};
+    }
+    var G=window.FGUI;
+    if(G&&G.open&&!G.__patched){G.__patched=1;
+      var o2=G.open;
+      G.open=function(p){console.log('[FGUI.open]',p);var r=o2.apply(this,arguments);if(r&&r.catch)r.catch(function(e){console.error('[FGUI.open reject]',e&&(e.stack||e.message||String(e)))});return r};
+    }
+    clearInterval(t);
+  },100);
+})();
+</script>
+</body>
+</html>

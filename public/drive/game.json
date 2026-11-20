@@ -1,0 +1,166 @@
+{
+    "deviceOrientation": "portrait",
+    "showStatusBar": false,
+    "networkTimeout": {
+        "request": 10000,
+        "connectSocket": 10000,
+        "uploadFile": 10000,
+        "downloadFile": 10000
+    },
+    "iOSHighPerformance": true,
+    "iOSHighPerformance+": true,
+    "subPackages": [
+        {
+            "name": "atlas",
+            "root": "/res/atlas/"
+        },
+        {
+            "name": "img",
+            "root": "/img/"
+        },
+        {
+            "name": "home",
+            "root": "/res/home/"
+        },
+        {
+            "name": "sounds",
+            "root": "/res/sounds/"
+        },
+        {
+            "name": "prop",
+            "root": "/res/prop/"
+        },
+        {
+            "name": "prop_2",
+            "root": "/res/prop_2/"
+        },
+        {
+            "name": "prop_3",
+            "root": "/res/prop_3/"
+        },
+        {
+            "name": "prop_4",
+            "root": "/res/prop_4/"
+        },
+        {
+            "name": "map_1",
+            "root": "/res/map_1/"
+        },
+        {
+            "name": "map_2",
+            "root": "/res/map_2/"
+        },
+        {
+            "name": "map_3",
+            "root": "/res/map_3/"
+        },
+        {
+            "name": "map_4",
+            "root": "/res/map_4/"
+        },
+        {
+            "name": "map_5",
+            "root": "/res/map_5/"
+        },
+        {
+            "name": "map_6",
+            "root": "/res/map_6/"
+        },
+        {
+            "name": "map_7",
+            "root": "/res/map_7/"
+        },
+        {
+            "name": "map_8",
+            "root": "/res/map_8/"
+        },
+        {
+            "name": "map_9",
+            "root": "/res/map_9/"
+        },
+        {
+            "name": "map_10",
+            "root": "/res/map_10/"
+        },
+        {
+            "name": "map_11",
+            "root": "/res/map_11/"
+        },
+        {
+            "name": "map_12",
+            "root": "/res/map_12/"
+        },
+        {
+            "name": "map_13",
+            "root": "/res/map_13/"
+        },
+        {
+            "name": "map_14",
+            "root": "/res/map_14/"
+        },
+        {
+            "name": "map_15",
+            "root": "/res/map_15/"
+        },
+        {
+            "name": "map_16",
+            "root": "/res/map_16/"
+        },
+        {
+            "name": "map_17",
+            "root": "/res/map_17/"
+        },
+        {
+            "name": "map_18",
+            "root": "/res/map_18/"
+        },
+        {
+            "name": "map_19",
+            "root": "/res/map_19/"
+        },
+        {
+            "name": "map_20",
+            "root": "/res/map_20/"
+        },
+        {
+            "name": "map_21",
+            "root": "/res/map_21/"
+        },
+        {
+            "name": "map_22",
+            "root": "/res/map_22/"
+        },
+        {
+            "name": "prop_5",
+            "root": "/res/prop_5/"
+        },
+        {
+            "name": "prop_6",
+            "root": "/res/prop_6/"
+        },
+        {
+            "name": "prop_7",
+            "root": "/res/prop_7/"
+        },
+        {
+            "name": "subgames_more",
+            "root": "/res/subgames_more/"
+        },
+        {
+            "name": "libs",
+            "root": "/libs/"
+        }
+    ],
+    "__warning__": "无效的 game.json [\"iOSHighPerformance\"]、game.json [\"iOSHighPerformance+\"]",
+    "gamePlugins": {
+        "MiniGameCommon": {
+            "version": "latest",
+            "provider": "wxaed5ace05d92b218",
+            "contexts": [
+                {
+                    "type": "isolatedContext"
+                }
+            ]
+        }
+    }
+}
