@@ -347,9 +347,140 @@
       .hidden {
         display: none;
       }
+
+      /* ===== 庆祝考过驾照特别版 · 首页 ===== */
+      #celebration {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 28px 22px;
+        text-align: center;
+        color: #fff;
+        background:
+          radial-gradient(circle at 18% 18%, rgba(255, 214, 102, 0.4) 0 12%, transparent 13%),
+          radial-gradient(circle at 84% 12%, rgba(255, 120, 120, 0.38) 0 10%, transparent 11%),
+          radial-gradient(circle at 78% 86%, rgba(255, 214, 102, 0.3) 0 14%, transparent 15%),
+          radial-gradient(circle at 16% 84%, rgba(255, 120, 120, 0.32) 0 11%, transparent 12%),
+          linear-gradient(160deg, #3a0d12 0%, #6b1420 45%, #8f1d26 100%);
+        overflow: hidden;
+        transition: opacity 0.35s ease, visibility 0.35s;
+      }
+      #celebration.hide {
+        opacity: 0;
+        visibility: hidden;
+      }
+      #celebration .emoji-big {
+        font-size: 54px;
+        line-height: 1;
+        animation: cel-pop 1.8s ease-in-out infinite;
+        filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.45));
+      }
+      @keyframes cel-pop {
+        0%, 100% { transform: scale(1) rotate(-5deg); }
+        50% { transform: scale(1.1) rotate(5deg); }
+      }
+      #celebration h1 {
+        margin: 16px 0 8px;
+        font-size: clamp(24px, 7vw, 34px);
+        letter-spacing: 3px;
+        background: linear-gradient(180deg, #fff7d6, #ffd166 60%, #f4a72c);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.28));
+      }
+      #celebration .cel-sub {
+        font-size: 15px;
+        color: #ffe3b0;
+        letter-spacing: 1px;
+      }
+      #celebration .cel-note {
+        margin-top: 6px;
+        font-size: 12px;
+        color: #e9a6a6;
+        letter-spacing: 1px;
+      }
+      #celebration .cel-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: min(88vw, 340px);
+        margin-top: 30px;
+      }
+      #celebration .cel-actions a,
+      #celebration .cel-actions button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        border: 0;
+        border-radius: 16px;
+        padding: 14px 16px;
+        font-size: 16px;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        font-family: inherit;
+      }
+      #celebration .cel-actions a:active,
+      #celebration .cel-actions button:active {
+        transform: scale(0.97);
+      }
+      #celebration .btn-main {
+        background: linear-gradient(135deg, #ffd166, #ff9f43);
+        color: #5a2b10;
+        box-shadow: 0 10px 24px rgba(255, 159, 67, 0.35);
+      }
+      #celebration .btn-link {
+        background: rgba(255, 255, 255, 0.14);
+        color: #ffe9c7;
+        border: 1px solid rgba(255, 214, 102, 0.35) !important;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+      }
+      #celebration .cel-foot {
+        margin-top: 26px;
+        font-size: 12px;
+        color: #d99a9a;
+      }
+      #celebration .confetti {
+        position: absolute;
+        font-size: 20px;
+        opacity: 0.9;
+        animation: cel-fall linear infinite;
+        pointer-events: none;
+      }
+      @keyframes cel-fall {
+        0% { transform: translateY(-12vh) rotate(0deg); opacity: 0; }
+        12% { opacity: 0.95; }
+        100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+      }
     </style>
   </head>
   <body>
+  <div id="celebration">
+    <div class="emoji-big">🎉</div>
+    <h1>庆祝考过驾照特别版</h1>
+    <div class="cel-sub">恭喜大宝顺利拿证 · 想去哪就去哪 🚗</div>
+    <div class="cel-note">副驾已就位，安全带系好，出发～</div>
+    <div class="cel-actions">
+      <button class="btn-main" id="cel-enter">进入「猪了个猪」</button>
+      <a class="btn-link" href="./pig/">🐷 解救小猪 · 原版引擎</a>
+      <a class="btn-link" href="./sheep/">🐑 挪挪胖羊 · 原版引擎</a>
+    </div>
+    <div class="cel-foot">今天不聊别的，就聊你有多厉害 💕</div>
+    <div class="confetti" style="left:8%;animation-duration:6.5s;animation-delay:0s">🎊</div>
+    <div class="confetti" style="left:24%;animation-duration:8s;animation-delay:1.2s">✨</div>
+    <div class="confetti" style="left:42%;animation-duration:7s;animation-delay:2.4s">🎈</div>
+    <div class="confetti" style="left:61%;animation-duration:9s;animation-delay:0.6s">🎉</div>
+    <div class="confetti" style="left:78%;animation-duration:6.8s;animation-delay:3.1s">⭐</div>
+    <div class="confetti" style="left:90%;animation-duration:8.4s;animation-delay:1.8s">🎊</div>
+  </div>
+
     <div id="game-wrap">
       <h1 class="game-title">🐷 猪了个猪 <small>· 无死局 · 给大宝的专属游戏</small></h1>
       <div id="topbar">
@@ -440,6 +571,16 @@
         </div>
       </div>
     </div>
+
+    <script>
+      (function () {
+        var cel = document.getElementById('celebration');
+        var btn = document.getElementById('cel-enter');
+        function close() { if (cel) cel.classList.add('hide'); }
+        if (btn) btn.addEventListener('click', close);
+        window.__celebrationClose = close;
+      })();
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

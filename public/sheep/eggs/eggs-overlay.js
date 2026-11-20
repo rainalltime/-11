@@ -38,16 +38,39 @@
       }
     }
   }
-  var lastLevelId = '';
   function scanLevel(text) {
     if (!text || text.length > 200) return;
-    var m = /关卡ID-(\d+)/.exec(text) || /关卡名称[:：]\s*([^\s,，]+)/.exec(text) || /关卡名字-([^\s,，]+)/.exec(text);
+    var m = /关卡ID-(\d+)/.exec(text) || /关卡名称[:：]\s*[^0-9]*(\d+)/.exec(text) || /关卡名字-[^0-9]*(\d+)/.exec(text);
     if (!m) return;
-    var id = m[1];
-    if (lastLevelId && id !== lastLevelId) onLevelClear();
-    lastLevelId = id;
+    var num = parseInt(m[1], 10);
+    if (!num || num <= 0 || num > 5000) return;
+    if (!state.lastLevelNum) {
+      // 第一次记录：把“已经到第 N 关”补记成 N-1 次通关，老玩家不会白玩
+      state.lastLevelNum = num;
+      state.cleared = (state.cleared || 0) + Math.max(0, num - 1);
+      settleUnlocks();
+      save();
+      return;
+    }
+    if (num > state.lastLevelNum) {
+      var inc = Math.min(num - state.lastLevelNum, 20);
+      state.cleared = (state.cleared || 0) + inc;
+      state.lastLevelNum = num;
+      settleUnlocks();
+      save();
+    } else if (num < state.lastLevelNum) {
+      state.lastLevelNum = num;
+      save();
+    }
   }
-
+  function settleUnlocks() {
+    while (state.unlocked * 5 + 5 <= (state.cleared || 0) && state.unlocked < EGGS.length) {
+      state.unlocked++;
+      showEgg(state.unlocked - 1);
+      hearts(8);
+      toast('解锁新彩蛋 💌');
+    }
+  }
   var css = createEl('style');
   css.textContent = [
     '#eggs-fab{position:fixed;left:14px;bottom:120px;z-index:2147483000;width:52px;height:52px;border-radius:50%;border:none;',
