@@ -602,11 +602,50 @@
     var map = { touchstart: 'start', touchmove: 'move', touchend: 'end', touchcancel: 'cancel' };
     // UnityPlugin 会调用 `e.touches.map(...)`，原生 TouchList 没有 map，
     // 手机上直接报错导致点击完全没反应。统一转成普通数组再转发。
+
+    // 把窗口坐标换算成游戏画布坐标：插件按 window.innerHeight/DPR 反算，
+    // 而 canvas 可能比窗口小（有留白），不换算会导致顶部按钮点不到。
+    function mapPoint(clientX, clientY) {
+      try {
+        var b = root.__pigrunRealBody || document.body;
+        var c = b && b.querySelector && b.querySelector('canvas');
+        if (!c) return [clientX, clientY];
+        var r = c.getBoundingClientRect ? c.getBoundingClientRect() : null;
+        var rw = (r && r.width) || c.clientWidth || root.innerWidth;
+        var rh = (r && r.height) || c.clientHeight || root.innerHeight;
+        var left = (r && r.left) || 0, top = (r && r.top) || 0;
+        var sx = (c.width || rw) / rw;
+        var sy = (c.height || rh) / rh;
+        var dpr = root.devicePixelRatio || 1;
+        var cx = (clientX - left) * sx;
+        var cy = (rh - (clientY - top)) * sy;
+        return [cx / dpr, root.innerHeight - cy / dpr];
+      } catch (e) { return [clientX, clientY]; }
+    }
+
+    // Unity 的 uGUI 用 Input.mousePosition 做命中测试；触摸不会自动更新鼠标位置，
+    // 所以每次触摸前补发一个 mousemove（以及按下/抬起），菜单/暂停/下一关按钮才能点。
+    function canvasEl() {
+      try { var b = root.__pigrunRealBody || document.body; return b && b.querySelector && b.querySelector('canvas'); } catch (e) { return null; }
+    }
+    function fireMouse(type, x, y, buttons) {
+      var c = canvasEl();
+      if (!c) return;
+      try {
+        c.dispatchEvent(new MouseEvent(type, {
+          bubbles: true, cancelable: true, view: root,
+          clientX: x, clientY: y,
+          button: type === 'mousemove' ? -1 : 0,
+          buttons: buttons
+        }));
+      } catch (e) {}
+    }
     function normTouch(t) {
+      var m = mapPoint(t.clientX, t.clientY);
       return {
         identifier: t.identifier,
-        clientX: t.clientX, clientY: t.clientY,
-        pageX: t.pageX, pageY: t.pageY,
+        clientX: m[0], clientY: m[1],
+        pageX: m[0], pageY: m[1],
         screenX: t.screenX, screenY: t.screenY,
         force: (t.force === undefined || t.force === 0) ? 1 : t.force,
         radiusX: t.radiusX, radiusY: t.radiusY
@@ -624,6 +663,12 @@
         if (!isCanvas(e)) return;
         e.preventDefault();
         var ev = normEvent(e);
+        var first = ev.changedTouches[0] || ev.touches[0];
+        if (first) {
+          fireMouse('mousemove', first.clientX, first.clientY, type === 'touchend' ? 0 : 1);
+          if (type === 'touchstart') setTimeout(function () { fireMouse('mousedown', first.clientX, first.clientY, 1); }, 40);
+          if (type === 'touchend') setTimeout(function () { fireMouse('mouseup', first.clientX, first.clientY, 0); }, 40);
+        }
         var list = touchHandlers[map[type]];
         for (var i = 0; i < list.length; i++) {
           try { list[i](ev); } catch (err) { console.error(err); }
@@ -633,19 +678,24 @@
     target.addEventListener('mousedown', function (e) {
       if (!isCanvas(e)) return;
       e.preventDefault();
-      var t = { identifier: 0, clientX: e.clientX, clientY: e.clientY, pageX: e.pageX, pageY: e.pageY, screenX: e.screenX, screenY: e.screenY, force: 1 };
+      var mp = mapPoint(e.clientX, e.clientY);
+      fireMouse('mousemove', e.clientX, e.clientY, 1);
+      setTimeout(function () { fireMouse('mousedown', e.clientX, e.clientY, 1); }, 40);
+      var t = { identifier: 0, clientX: mp[0], clientY: mp[1], pageX: mp[0], pageY: mp[1], screenX: e.screenX, screenY: e.screenY, force: 1 };
       var ev = { type: 'touchstart', touches: [t], targetTouches: [t], changedTouches: [t], timeStamp: performance.now() };
       touchHandlers.start.forEach(function (fn) { try { fn(ev); } catch (err) { console.error(err); } });
     });
     target.addEventListener('mousemove', function (e) {
       if (!isCanvas(e)) return;
       if (e.buttons === 0) return;
-      var t = { identifier: 0, clientX: e.clientX, clientY: e.clientY, pageX: e.pageX, pageY: e.pageY, screenX: e.screenX, screenY: e.screenY, force: 1 };
+      var mp = mapPoint(e.clientX, e.clientY);
+      var t = { identifier: 0, clientX: mp[0], clientY: mp[1], pageX: mp[0], pageY: mp[1], screenX: e.screenX, screenY: e.screenY, force: 1 };
       var ev = { type: 'touchmove', touches: [t], targetTouches: [t], changedTouches: [t], timeStamp: performance.now() };
       touchHandlers.move.forEach(function (fn) { try { fn(ev); } catch (err) { console.error(err); } });
     });
     root.addEventListener('mouseup', function (e) {
-      var t = { identifier: 0, clientX: e.clientX, clientY: e.clientY, pageX: e.pageX, pageY: e.pageY, screenX: e.screenX, screenY: e.screenY, force: 1 };
+      var mp = mapPoint(e.clientX, e.clientY);
+      var t = { identifier: 0, clientX: mp[0], clientY: mp[1], pageX: mp[0], pageY: mp[1], screenX: e.screenX, screenY: e.screenY, force: 1 };
       var ev = { type: 'touchend', touches: [], targetTouches: [], changedTouches: [t], timeStamp: performance.now() };
       touchHandlers.end.forEach(function (fn) { try { fn(ev); } catch (err) { console.error(err); } });
     });
@@ -921,8 +971,20 @@
       if (body && typeof body === 'object' && !(body instanceof ArrayBuffer) && !(body instanceof Uint8Array)) {
         try { body = JSON.stringify(body); if (!headers['content-type']) headers['content-type'] = 'application/json'; } catch (e) { body = String(body); }
       }
+      var cannedOk = function () {
+        // 静态托管/无后端时：排行榜、存档、随机头像这些接口失败会让结算流程一直等，
+        // 这里统一给一个空成功响应（getopenid / get_pig_game_info 除外）。
+        var payload = JSON.stringify({ code: 200, data: {}, message: 'success' });
+        o.success && o.success({ statusCode: 200, data: payload, header: { 'content-type': 'application/json' } });
+        o.complete && o.complete({});
+      };
+      var canCanned = /api\.flysheeep\.com/.test(url) && !/get_pig_game_info|getopenid/.test(url);
       fetch(url, { method: method, headers: headers, body: (method === 'GET' || method === 'HEAD') ? undefined : body })
         .then(function (r) {
+          if (!r.ok) {
+            if (canCanned) { cannedOk(); return; }
+            throw new Error('HTTP ' + r.status);
+          }
           var p = (o.responseType === 'arraybuffer') ? r.arrayBuffer() : r.text();
           return p.then(function (data) {
             var header = {}; try { r.headers.forEach(function (v, k) { header[k] = v; }); } catch (e) {}
@@ -930,7 +992,11 @@
             o.complete && o.complete({});
           });
         })
-        .catch(function (e) { o.fail && o.fail({ errMsg: String(e) }); o.complete && o.complete({}); });
+        .catch(function (e) {
+          if (canCanned) { cannedOk(); return; }
+          o.fail && o.fail({ errMsg: String(e) });
+          o.complete && o.complete({});
+        });
       return { abort: noop };
     },
     uploadFile: function (o) { later(function () { o.success && o.success({ statusCode: 200, data: '{}' }); o.complete && o.complete({}); }); return { onProgressUpdate: noop, abort: noop }; },
