@@ -25,9 +25,18 @@
 
   var NG = { 'ngrok-skip-browser-warning': '1' };
   async function fetchBuffer(url) {
-    var r = await fetch(url, { headers: NG });
-    if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + url);
-    return r.arrayBuffer();
+    var lastErr = null;
+    for (var attempt = 0; attempt < 4; attempt++) {
+      try {
+        var r = await fetch(url, { headers: NG });
+        if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + url);
+        return await r.arrayBuffer();
+      } catch (e) {
+        lastErr = e;
+        await new Promise(function (res) { setTimeout(res, 400 * (attempt + 1)); });
+      }
+    }
+    throw lastErr;
   }
   // 先在本地解 gzip 再交给引擎：隧道/弱网下 39MB→12MB，首屏快 3 倍。
   async function fetchMaybeGz(url) {
